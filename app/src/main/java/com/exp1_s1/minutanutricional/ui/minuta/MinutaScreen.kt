@@ -36,22 +36,27 @@ import com.exp1_s1.minutanutricional.data.weeklyMenu
 import com.exp1_s1.minutanutricional.model.Recipe
 
 @Composable
-fun MinutaScreen() {
+fun MinutaScreen(onLogOut: () -> Unit) {
     var selectedRecipe by remember { mutableStateOf<Recipe?>(null) }
 
     selectedRecipe?.let { recipe ->
         BackHandler { selectedRecipe = null }
         RecipeDetailScreen(recipe = recipe, onBack = { selectedRecipe = null })
-    } ?: WeeklyMenuScreen(onRecipeClick = { selectedRecipe = it })
+    } ?: WeeklyMenuScreen(onRecipeClick = { selectedRecipe = it }, onLogOut = onLogOut)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun WeeklyMenuScreen(onRecipeClick: (Recipe) -> Unit) {
+private fun WeeklyMenuScreen(onRecipeClick: (Recipe) -> Unit, onLogOut: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Minuta semanal", style = MaterialTheme.typography.headlineSmall) },
+                actions = {
+                    TextButton(onClick = onLogOut) {
+                        Text("Salir")
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
