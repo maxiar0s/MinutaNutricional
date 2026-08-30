@@ -2,6 +2,22 @@ package com.exp1_s1.minutanutricional.data
 
 import com.exp1_s1.minutanutricional.model.Recipe
 
+data class DailyRecipeSummary(
+    val day: String,
+    val recipeCount: Int,
+    val recipeNames: String
+)
+
+fun summarizeWeeklyMenu(recipes: List<Recipe>): List<DailyRecipeSummary> =
+    recipes.groupBy { it.day }
+        .map { (day, dailyRecipes) ->
+            DailyRecipeSummary(
+                day = day,
+                recipeCount = dailyRecipes.size,
+                recipeNames = dailyRecipes.joinToString { it.title }
+            )
+        }
+
 val weeklyMenu = listOf(
     Recipe(
         title = "Pollo con quinoa",

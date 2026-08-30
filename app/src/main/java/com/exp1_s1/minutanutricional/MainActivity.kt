@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.exp1_s1.minutanutricional.data.UserRepository
 import com.exp1_s1.minutanutricional.ui.access.LoginScreen
 import com.exp1_s1.minutanutricional.ui.access.RecoveryScreen
 import com.exp1_s1.minutanutricional.ui.access.RegistrationScreen
@@ -37,15 +38,23 @@ private enum class AppScreen {
 @Composable
 private fun MinutaNutricionalApp() {
     var currentScreen by remember { mutableStateOf(AppScreen.Login) }
+    val userRepository = remember { UserRepository() }
 
     when (currentScreen) {
         AppScreen.Login -> LoginScreen(
-            onLogin = { currentScreen = AppScreen.WeeklyMenu },
+            onLogin = userRepository::authenticate,
+            onSuccessfulLogin = { currentScreen = AppScreen.WeeklyMenu },
             onRegister = { currentScreen = AppScreen.Registration },
             onRecoverPassword = { currentScreen = AppScreen.Recovery }
         )
-        AppScreen.Registration -> RegistrationScreen(onBackToLogin = { currentScreen = AppScreen.Login })
-        AppScreen.Recovery -> RecoveryScreen(onBackToLogin = { currentScreen = AppScreen.Login })
+        AppScreen.Registration -> RegistrationScreen(
+            onRegister = userRepository::register,
+            onBackToLogin = { currentScreen = AppScreen.Login }
+        )
+        AppScreen.Recovery -> RecoveryScreen(
+            onRecoverPassword = userRepository::recoverPassword,
+            onBackToLogin = { currentScreen = AppScreen.Login }
+        )
         AppScreen.WeeklyMenu -> MinutaScreen(onLogOut = { currentScreen = AppScreen.Login })
     }
 }

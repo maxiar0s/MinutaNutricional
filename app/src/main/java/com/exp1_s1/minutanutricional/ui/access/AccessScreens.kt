@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -30,19 +31,26 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.exp1_s1.minutanutricional.data.LoginResult
+import com.exp1_s1.minutanutricional.data.RecoveryResult
+import com.exp1_s1.minutanutricional.data.RegistrationResult
 
 @Composable
 fun LoginScreen(
-    onLogin: () -> Unit,
+    onLogin: (String, String) -> LoginResult,
+    onSuccessfulLogin: () -> Unit,
     onRegister: () -> Unit,
     onRecoverPassword: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf<String?>(null) }
 
     AccessLayout(title = "Bienvenido a Minuta Nutricional") {
         Text(
@@ -51,9 +59,19 @@ fun LoginScreen(
         )
         EmailField(value = email, onValueChange = { email = it })
         PasswordField(value = password, onValueChange = { password = it })
-        Button(onClick = onLogin, modifier = Modifier.fillMaxWidth()) {
+        Button(
+            onClick = {
+                when (onLogin(email, password)) {
+                    LoginResult.Success -> onSuccessfulLogin()
+                    LoginResult.EmptyFields -> message = "Completa el correo y la contraseña."
+                    LoginResult.InvalidCredentials -> message = "El correo o la contraseña no son correctos."
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Text("Ingresar")
         }
+        message?.let { StatusMessage(it) }
         TextButton(onClick = onRegister, modifier = Modifier.fillMaxWidth()) {
             Text("Crear una cuenta")
         }
@@ -65,7 +83,10 @@ fun LoginScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RegistrationScreen(onBackToLogin: () -> Unit) {
+fun RegistrationScreen(
+    onRegister: (String, String, String) -> RegistrationResult,
+    onBackToLogin: () -> Unit
+) {
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -73,6 +94,7 @@ fun RegistrationScreen(onBackToLogin: () -> Unit) {
     var preferenceExpanded by remember { mutableStateOf(false) }
     var householdSize by remember { mutableStateOf("1 a 2 personas") }
     var acceptsTerms by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf<String?>(null) }
     val preferences = listOf("Sin preferencia", "Vegetariana", "Baja en sal")
     val householdSizes = listOf("1 a 2 personas", "3 a 4 personas", "5 o más personas")
 
@@ -122,9 +144,26 @@ fun RegistrationScreen(onBackToLogin: () -> Unit) {
             Checkbox(checked = acceptsTerms, onCheckedChange = { acceptsTerms = it })
             Text("Acepto los términos de uso")
         }
-        Button(onClick = onBackToLogin, modifier = Modifier.fillMaxWidth()) {
+        Button(
+            onClick = {
+                if (!acceptsTerms) {
+                    message = "Debes aceptar los términos de uso para registrarte."
+                } else {
+                    message = when (onRegister(name, email, password)) {
+                        RegistrationResult.Success -> "Cuenta creada. Ahora puedes volver e ingresar."
+                        RegistrationResult.EmptyFields -> "Completa nombre, correo y contraseña."
+                        RegistrationResult.InvalidEmail -> "Escribe un correo electrónico válido."
+                        RegistrationResult.WeakPassword -> "La contraseña debe tener al menos 6 caracteres."
+                        RegistrationResult.DuplicateEmail -> "Este correo ya está registrado."
+                        RegistrationResult.CapacityReached -> "Se alcanzó el máximo local de 5 usuarios."
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Text("Registrarme")
         }
+        message?.let { StatusMessage(it) }
         TextButton(onClick = onBackToLogin, modifier = Modifier.fillMaxWidth()) {
             Text("Volver al ingreso")
         }
@@ -132,26 +171,30 @@ fun RegistrationScreen(onBackToLogin: () -> Unit) {
 }
 
 @Composable
-fun RecoveryScreen(onBackToLogin: () -> Unit) {
+fun RecoveryScreen(
+    onRecoverPassword: (String) -> RecoveryResult,
+    onBackToLogin: () -> Unit
+) {
     var email by remember { mutableStateOf("") }
-    var linkSent by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf<String?>(null) }
 
     AccessLayout(title = "Recupera tu contraseña") {
         Text(
-            text = "Escribe tu correo. Te enviaremos un enlace para crear una nueva contraseña.",
+            text = "Escribe tu correo para comprobar si está registrado en este dispositivo.",
             style = MaterialTheme.typography.bodyLarge
         )
         EmailField(value = email, onValueChange = { email = it })
-        Button(onClick = { linkSent = true }, modifier = Modifier.fillMaxWidth()) {
-            Text("Enviar enlace")
+        Button(onClick = {
+            message = when (onRecoverPassword(email)) {
+                RecoveryResult.Ready -> "Correo registrado. Por seguridad, solicita ayuda a la persona que creó la cuenta."
+                RecoveryResult.EmptyEmail -> "Escribe tu correo electrónico."
+                RecoveryResult.InvalidEmail -> "Escribe un correo electrónico válido."
+                RecoveryResult.UnregisteredEmail -> "No encontramos una cuenta con este correo en este dispositivo."
+            }
+        }, modifier = Modifier.fillMaxWidth()) {
+            Text("Comprobar correo")
         }
-        if (linkSent) {
-            Text(
-                text = "El enlace fue enviado. Revisa tu correo electrónico.",
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.bodyLarge
-            )
-        }
+        message?.let { StatusMessage(it) }
         TextButton(onClick = onBackToLogin, modifier = Modifier.fillMaxWidth()) {
             Text("Volver al ingreso")
         }
@@ -162,18 +205,34 @@ fun RecoveryScreen(onBackToLogin: () -> Unit) {
 @Composable
 private fun AccessLayout(title: String, content: @Composable () -> Unit) {
     Scaffold(topBar = { TopAppBar(title = { Text(title) }) }) { innerPadding ->
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(24.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            content()
-            Spacer(modifier = Modifier.height(16.dp))
+            val horizontalPadding = if (maxWidth < 600.dp) 24.dp else 72.dp
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = horizontalPadding, vertical = 24.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                content()
+                Spacer(modifier = Modifier.height(16.dp))
+            }
         }
     }
+}
+
+@Composable
+private fun StatusMessage(message: String) {
+    Text(
+        text = message,
+        color = MaterialTheme.colorScheme.primary,
+        style = MaterialTheme.typography.bodyLarge,
+        modifier = Modifier.semantics { contentDescription = "Mensaje: $message" }
+    )
 }
 
 @Composable

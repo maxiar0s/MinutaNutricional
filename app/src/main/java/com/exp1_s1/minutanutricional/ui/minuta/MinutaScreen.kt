@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -30,8 +31,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import com.exp1_s1.minutanutricional.data.DailyRecipeSummary
+import com.exp1_s1.minutanutricional.data.summarizeWeeklyMenu
 import com.exp1_s1.minutanutricional.data.weeklyMenu
 import com.exp1_s1.minutanutricional.model.Recipe
 
@@ -48,6 +54,7 @@ fun MinutaScreen(onLogOut: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WeeklyMenuScreen(onRecipeClick: (Recipe) -> Unit, onLogOut: () -> Unit) {
+    val weeklySummary = remember { summarizeWeeklyMenu(weeklyMenu) }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -68,26 +75,59 @@ private fun WeeklyMenuScreen(onRecipeClick: (Recipe) -> Unit, onLogOut: () -> Un
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            if (maxWidth < 600.dp) {
-                LazyColumn(
-                    contentPadding = PaddingValues(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(weeklyMenu, key = { it.day }) { recipe ->
-                        RecipeCard(recipe = recipe, onClick = { onRecipeClick(recipe) })
+            val isCompactWidth = maxWidth < 600.dp
+            Column(modifier = Modifier.fillMaxSize()) {
+                WeeklySummaryTable(summary = weeklySummary)
+                if (isCompactWidth) {
+                    LazyColumn(
+                        contentPadding = PaddingValues(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        items(weeklyMenu, key = { it.day }) { recipe ->
+                            RecipeCard(recipe = recipe, onClick = { onRecipeClick(recipe) })
+                        }
+                    }
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        contentPadding = PaddingValues(24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(20.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        items(weeklyMenu, key = { it.day }) { recipe ->
+                            RecipeCard(recipe = recipe, onClick = { onRecipeClick(recipe) })
+                        }
                     }
                 }
-            } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    contentPadding = PaddingValues(24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp)
-                ) {
-                    items(weeklyMenu, key = { it.day }) { recipe ->
-                        RecipeCard(recipe = recipe, onClick = { onRecipeClick(recipe) })
-                    }
-                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeeklySummaryTable(summary: List<DailyRecipeSummary>) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .semantics { contentDescription = "Resumen semanal de recetas" },
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text("Resumen semanal", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Row {
+            Text("Día", modifier = Modifier.weight(0.3f), fontWeight = FontWeight.Bold)
+            Text("Recetas", modifier = Modifier.weight(0.2f), fontWeight = FontWeight.Bold)
+            Text("Preparación", modifier = Modifier.weight(0.5f), fontWeight = FontWeight.Bold)
+        }
+        summary.forEach { item ->
+            Row(modifier = Modifier.semantics {
+                contentDescription = "${item.day}: ${item.recipeCount} receta, ${item.recipeNames}"
+            }) {
+                Text(item.day, modifier = Modifier.weight(0.3f))
+                Text(item.recipeCount.toString(), modifier = Modifier.weight(0.2f))
+                Text(item.recipeNames, modifier = Modifier.weight(0.5f))
             }
         }
     }
@@ -120,6 +160,7 @@ private fun RecipeCard(recipe: Recipe, onClick: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RecipeDetailScreen(recipe: Recipe, onBack: () -> Unit) {
+    var showNutritionHelp by remember { mutableStateOf(false) }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -135,13 +176,17 @@ private fun RecipeDetailScreen(recipe: Recipe, onBack: () -> Unit) {
             )
         }
     ) { innerPadding ->
-        LazyColumn(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+                .padding(innerPadding)
         ) {
+            val contentPadding = if (maxWidth < 600.dp) 24.dp else 72.dp
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(contentPadding),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
             item {
                 Text(recipe.title, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
             }
@@ -157,8 +202,31 @@ private fun RecipeDetailScreen(recipe: Recipe, onBack: () -> Unit) {
             item {
                 Text("Recomendación nutricional", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             }
-            item {
-                Text(recipe.nutritionalRecommendation, style = MaterialTheme.typography.bodyLarge)
+                item {
+                    Text(recipe.nutritionalRecommendation, style = MaterialTheme.typography.bodyLarge)
+                }
+                item {
+                    Text(
+                        text = "Ver ayuda para entender esta recomendación",
+                        color = MaterialTheme.colorScheme.primary,
+                        textDecoration = TextDecoration.Underline,
+                        modifier = Modifier
+                            .clickable(onClickLabel = "Mostrar ayuda nutricional") {
+                                showNutritionHelp = !showNutritionHelp
+                            }
+                            .semantics {
+                                contentDescription = "Vínculo: ver ayuda para entender esta recomendación"
+                            }
+                    )
+                }
+                if (showNutritionHelp) {
+                    item {
+                        Text(
+                            "Esta información es educativa. Para una recomendación personal, consulta a un profesional de salud.",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
             }
         }
     }
