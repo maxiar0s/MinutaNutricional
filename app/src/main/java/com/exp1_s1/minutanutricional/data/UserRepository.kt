@@ -40,10 +40,15 @@ class UserRepository {
     fun hasRegisteredEmail(email: String): Boolean =
         users.any { it.email.equals(email.trim(), ignoreCase = true) }
 
-    fun recoverPassword(email: String): RecoveryResult = when {
+    fun recoverPassword(email: String, newPassword: String): RecoveryResult = when {
         email.isBlank() -> RecoveryResult.EmptyEmail
         !isValidEmail(email.trim()) -> RecoveryResult.InvalidEmail
-        hasRegisteredEmail(email) -> RecoveryResult.Ready
+        newPassword.length < MIN_PASSWORD_LENGTH -> RecoveryResult.WeakPassword
+        hasRegisteredEmail(email) -> {
+            val userIndex = users.indexOfFirst { it.email.equals(email.trim(), ignoreCase = true) }
+            users[userIndex] = users[userIndex].copy(password = newPassword)
+            RecoveryResult.PasswordUpdated
+        }
         else -> RecoveryResult.UnregisteredEmail
     }
 
@@ -74,8 +79,9 @@ enum class LoginResult {
 }
 
 enum class RecoveryResult {
-    Ready,
+    PasswordUpdated,
     EmptyEmail,
     InvalidEmail,
+    WeakPassword,
     UnregisteredEmail
 }

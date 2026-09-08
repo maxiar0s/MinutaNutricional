@@ -172,27 +172,34 @@ fun RegistrationScreen(
 
 @Composable
 fun RecoveryScreen(
-    onRecoverPassword: (String) -> RecoveryResult,
+    onRecoverPassword: (String, String) -> RecoveryResult,
     onBackToLogin: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmedPassword by remember { mutableStateOf("") }
     var message by remember { mutableStateOf<String?>(null) }
 
     AccessLayout(title = "Recupera tu contraseña") {
         Text(
-            text = "Escribe tu correo para comprobar si está registrado en este dispositivo.",
+            text = "1. Enter your registered email. 2. Choose and confirm a new password.",
             style = MaterialTheme.typography.bodyLarge
         )
         EmailField(value = email, onValueChange = { email = it })
+        PasswordField(value = newPassword, onValueChange = { newPassword = it }, label = "New password")
+        PasswordField(value = confirmedPassword, onValueChange = { confirmedPassword = it }, label = "Confirm new password")
         Button(onClick = {
-            message = when (onRecoverPassword(email)) {
-                RecoveryResult.Ready -> "Correo registrado. Por seguridad, solicita ayuda a la persona que creó la cuenta."
-                RecoveryResult.EmptyEmail -> "Escribe tu correo electrónico."
-                RecoveryResult.InvalidEmail -> "Escribe un correo electrónico válido."
-                RecoveryResult.UnregisteredEmail -> "No encontramos una cuenta con este correo en este dispositivo."
+            message = if (newPassword != confirmedPassword) {
+                "The passwords do not match. Please enter them again."
+            } else when (onRecoverPassword(email, newPassword)) {
+                RecoveryResult.PasswordUpdated -> "Password updated. You can now sign in with your new password."
+                RecoveryResult.EmptyEmail -> "Enter your email address."
+                RecoveryResult.InvalidEmail -> "Enter a valid email address."
+                RecoveryResult.WeakPassword -> "Your new password must contain at least 6 characters."
+                RecoveryResult.UnregisteredEmail -> "No account with this email was found on this device."
             }
         }, modifier = Modifier.fillMaxWidth()) {
-            Text("Comprobar correo")
+            Text("Update password")
         }
         message?.let { StatusMessage(it) }
         TextButton(onClick = onBackToLogin, modifier = Modifier.fillMaxWidth()) {
@@ -248,11 +255,11 @@ private fun EmailField(value: String, onValueChange: (String) -> Unit) {
 }
 
 @Composable
-private fun PasswordField(value: String, onValueChange: (String) -> Unit) {
+private fun PasswordField(value: String, onValueChange: (String) -> Unit, label: String = "Contraseña") {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        label = { Text("Contraseña") },
+        label = { Text(label) },
         modifier = Modifier.fillMaxWidth(),
         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Password),
         visualTransformation = if (value.isEmpty()) VisualTransformation.None else PasswordVisualTransformation(),

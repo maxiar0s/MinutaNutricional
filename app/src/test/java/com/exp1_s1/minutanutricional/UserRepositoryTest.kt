@@ -38,14 +38,16 @@ class UserRepositoryTest {
     }
 
     @Test
-    fun recoveryOnlyConfirmsRegisteredLocalEmails() {
+    fun recoveryValidatesAndUpdatesRegisteredLocalPassword() {
         val repository = UserRepository()
 
-        assertEquals(RecoveryResult.EmptyEmail, repository.recoverPassword(""))
-        assertEquals(RecoveryResult.InvalidEmail, repository.recoverPassword("correo"))
-        assertEquals(RecoveryResult.UnregisteredEmail, repository.recoverPassword("ana@example.com"))
+        assertEquals(RecoveryResult.EmptyEmail, repository.recoverPassword("", "nueva123"))
+        assertEquals(RecoveryResult.InvalidEmail, repository.recoverPassword("correo", "nueva123"))
+        assertEquals(RecoveryResult.UnregisteredEmail, repository.recoverPassword("ana@example.com", "nueva123"))
         repository.register("Ana", "ana@example.com", "clave123")
-        assertEquals(RecoveryResult.Ready, repository.recoverPassword("ANA@example.com"))
+        assertEquals(RecoveryResult.PasswordUpdated, repository.recoverPassword("ANA@example.com", "nueva123"))
+        assertEquals(LoginResult.InvalidCredentials, repository.authenticate("ana@example.com", "clave123"))
+        assertEquals(LoginResult.Success, repository.authenticate("ana@example.com", "nueva123"))
     }
 
     @Test
